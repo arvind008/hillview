@@ -18,7 +18,9 @@
 package org.hillview.targets;
 
 import org.hillview.*;
+import org.hillview.targets.HillViewHostDisplay;
 import org.hillview.dataset.RemoteDataSet;
+import org.hillview.dataset.ParallelDataSet;
 import org.hillview.dataset.api.*;
 import org.hillview.dataset.remoting.HillviewServer;
 import org.hillview.management.*;
@@ -32,6 +34,9 @@ import javax.websocket.Session;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 public class InitialObjectTarget extends RpcTarget {
     private static final String LOCALHOST = "127.0.0.1";
@@ -39,11 +44,23 @@ public class InitialObjectTarget extends RpcTarget {
 
     @Nullable
     private IDataSet<Empty> emptyDataset = null;
+    private IDataSet<Empty> emptyDataset1 = null;
+
+    public HillViewHostDisplay hosts = new HillViewHostDisplay();
+    
+    ArrayList<IDataSet<Empty>> newHosts=new ArrayList<IDataSet<Empty>>();
+    
+    HostList desc1;
 
     public InitialObjectTarget() {
         // Get the base naming context
         final String clusterFile = System.getenv(ENV_VARIABLE);
         final HostList desc;
+	try{
+	hosts.getTagsHosts("dev");
+	}
+	catch(Exception e){
+	}
         if (clusterFile == null) {
             HillviewLogger.instance.info(
                     "No cluster description file specified; creating singleton");
@@ -80,17 +97,46 @@ public class InitialObjectTarget extends RpcTarget {
 
     @HillviewRpc
     public void findFiles(RpcRequest request, RpcRequestContext context) {
+        Utilities u = new Utilities();
         FileSetDescription desc = request.parseArgs(FileSetDescription.class);
-        HillviewLogger.instance.info("Finding files", "{0}", desc);
+        HillviewLogger.instance.info("Finding files", "{0}", desc.getTags());
+	
+	try{
+        	hosts.getTagsHosts(desc.getTags());
+		Map m=hosts.getTagsValues();
+		HillviewLogger.instance.info("Hosts----","{0}",m);
+		u.setTagsForHost(m);
+		HillviewLogger.instance.info("Hosts----","{0}",u.getTagsForHost());
+		
+		desc1 = HostList.fromFile("newHosts");
+	}
+	catch(Exception e){
+		HillviewLogger.instance.info("Error in getting hosts", "{0}", e.getLocalizedMessage());
+	}
+	this.emptyDataset1 = RemoteDataSet.createCluster(desc1, RemoteDataSet.defaultDatasetIndex);
         IMap<Empty, List<IFileReference>> finder = new FindFilesMapper(desc);
-        assert this.emptyDataset != null;
-        this.runFlatMap(this.emptyDataset, finder, FileDescriptionTarget::new, request, context);
+        assert this.emptyDataset1 != null;
+        this.runFlatMap(this.emptyDataset1, finder, FileDescriptionTarget::new, request, context);
     }
 
     @HillviewRpc
     public void findLogs(RpcRequest request, RpcRequestContext context) {
+	FileSetDescription desc = new FileSetDescription();
+	 Utilities u=new Utilities();
+	try{
+        	
+		Map m=hosts.getTagsValues();
+		HillviewLogger.instance.info("Hosts----","{0}",m);
+		u.setTagsForHost(m);
+		HillviewLogger.instance.info("Hosts----","{0}",u.getTagsForHost());
+		
+		desc1 = HostList.fromFile("newHosts");
+	}
+	catch(Exception e){
+		HillviewLogger.instance.info("Error in getting hosts", "{0}", e.getLocalizedMessage());
+	}
+	this.emptyDataset1 = RemoteDataSet.createCluster(desc1, RemoteDataSet.defaultDatasetIndex);
         @Nullable String cookie = request.parseArgs(String.class);
-        FileSetDescription desc = new FileSetDescription();
         desc.cookie = cookie;
         desc.fileKind = "hillviewlog";
         desc.fileNamePattern = "hillview*.log";
@@ -98,8 +144,8 @@ public class InitialObjectTarget extends RpcTarget {
         desc.folder = ".";  // relative to the work directory of the worker process
         IMap<Empty, List<IFileReference>> finder = new FindFilesMapper(desc);
         HillviewLogger.instance.info("Finding log files");
-        assert this.emptyDataset != null;
-        this.runFlatMap(this.emptyDataset, finder, FileDescriptionTarget::new, request, context);
+        assert this.emptyDataset1 != null;
+        this.runFlatMap(this.emptyDataset1, finder, FileDescriptionTarget::new, request, context);
     }
 
     @Override

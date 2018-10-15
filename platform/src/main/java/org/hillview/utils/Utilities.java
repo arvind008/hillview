@@ -30,7 +30,9 @@ import java.io.StringWriter;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
-
+import java.util.Map;
+import java.util.Iterator;
+import java.util.*;
 /**
  * This class has some useful static helper methods.
  */
@@ -42,6 +44,7 @@ public class Utilities {
      * @return          A String that represents a regular expression
      *                  with the same semantics as the wildcard pattern.
      */
+    public String tags = null;
     @Nullable
     public static String wildcardToRegex(@Nullable String wildcard) {
         if (wildcard == null)
@@ -138,7 +141,16 @@ public class Utilities {
             return e.getLocalizedMessage();
         }
     }
-
+    
+    public String getHostAddress() {
+        try {
+            java.net.InetAddress localMachine = java.net.InetAddress.getLocalHost();
+            return localMachine.getHostAddress();
+        } catch (java.net.UnknownHostException e) {
+            HillviewLogger.instance.error("Cannot get host name", e);
+            return e.getLocalizedMessage();
+        }
+    }
     /**
      * PartialResult does not implement IJson, but some variants of it do.
      * @param pr  Partial result.
@@ -182,4 +194,24 @@ public class Utilities {
             basename = FilenameUtils.removeExtension(basename);
         return FilenameUtils.removeExtension(basename);
     }
+    public String getTagsForHost(){
+	return tags;
+    }
+
+    public void setTagsForHost(Map m){
+	Iterator it = m.entrySet().iterator();
+    	while (it.hasNext()) {
+        	Map.Entry pair = (Map.Entry)it.next();
+       	 	if(getHostAddress().equals("127.0.1.1")){
+			tags = pair.getValue().toString();
+		}
+		else{
+			tags = "No Tags";
+		}
+   	}
+    }
+    public static String getTags(){
+	return "spark, dev";
+    }
 }
+ 

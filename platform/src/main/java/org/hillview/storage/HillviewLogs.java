@@ -23,22 +23,25 @@ import org.hillview.table.Schema;
 import org.hillview.table.Table;
 import org.hillview.table.api.ContentsKind;
 import org.hillview.table.api.ITable;
-
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
-
+import org.hillview.utils.*;
 /**
  * Reads Hillview logs into ITable objects.
  */
 public class HillviewLogs {
     private static final Schema schema = new Schema();
+    // public static Utilities u =new Utilities();
+    public String tags = null;
     private static final Pattern pattern = Pattern.compile("([^,]*),([^,]*),([^,]*),([^,]*),([^,]*)," +
             "([^,]*),([^,]*),([^,]*),?(.*)");
 
     static {
+	HillviewLogs.schema.append(new ColumnDescription("Host", ContentsKind.String));
+        HillviewLogs.schema.append(new ColumnDescription("Tags", ContentsKind.String));
         HillviewLogs.schema.append(new ColumnDescription("Time", ContentsKind.Date));
         HillviewLogs.schema.append(new ColumnDescription("Role", ContentsKind.String));
         HillviewLogs.schema.append(new ColumnDescription("Level", ContentsKind.String));
@@ -49,7 +52,13 @@ public class HillviewLogs {
         HillviewLogs.schema.append(new ColumnDescription("Message", ContentsKind.String));
         HillviewLogs.schema.append(new ColumnDescription("Arguments", ContentsKind.String));
     }
-
+    /*
+    public void setTag(Utilities u){
+	this.tags = u.tags;
+    }
+    public String getTags(){
+	return tags;
+    }*/
     public static class LogFileLoader extends TextFileLoader {
         LogFileLoader(final String path) {
             super(path);
@@ -59,16 +68,18 @@ public class HillviewLogs {
             Matcher m = pattern.matcher(line);
             if (!m.find())
                 this.error("Could not parse line");
-            output[0] = m.group(1); // Time
-            output[1] = m.group(2); // Role
-            output[2] = m.group(3); // Level
-            output[3] = m.group(4); // Machine
-            output[4] = m.group(5); // Thread
-            output[5] = m.group(6); // Class
-            output[6] = m.group(7); // Method
-            output[7] = m.group(8); // Message
+	    output[0] = Utilities.getHostName();
+	    output[1] = Utilities.getTags();
+            output[2] = m.group(1); // Time
+            output[3] = m.group(2); // Role
+            output[4] = m.group(3); // Level
+            output[5] = m.group(4); // Machine
+            output[6] = m.group(5); // Thread
+            output[7] = m.group(6); // Class
+            output[8] = m.group(7); // Method
+            output[9] = m.group(8); // Message
             String arguments = StringEscapeUtils.unescapeCsv(m.group(9));
-            output[8] = arguments.replace("\\n", "\n");  // Arguments
+            output[10] = arguments.replace("\\n", "\n");  // Arguments
         }
 
         @Override

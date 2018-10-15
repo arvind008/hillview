@@ -86,7 +86,7 @@ export interface JdbcConnectionInformation {
     lazyLoading: boolean;
 }
 
-export type DataKinds = "csv" | "orc" | "parquet" | "json" | "hillviewlog" | "db" | "genericlog";
+export type DataKinds = "csv" | "orc" | "parquet" | "json" | "hillviewlog" | "db";
 
 export interface FileSetDescription {
     fileKind: DataKinds;
@@ -96,8 +96,8 @@ export interface FileSetDescription {
     headerRow?: boolean;
     cookie?: string;
     repeat: number;
+    tags: string;
     name: string;  // not used on the Java side
-    logFormat: string; 
 }
 
 export interface HLogLog {

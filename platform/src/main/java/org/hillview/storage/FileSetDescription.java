@@ -67,11 +67,9 @@ public class FileSetDescription implements Serializable, IJson {
      * Used for testing: allows reading the same data multiple times.
      */
     public int repeat = 1;
-    /**
-     * This is a format in the "grok" pattern language.
-     */
-    @Nullable
-    public String logFormat = null;
+
+    public String tags="";
+
     @Nullable
     private String getSchemaPath() {
         if (Utilities.isNullOrEmpty(this.schemaFile))
@@ -80,15 +78,14 @@ public class FileSetDescription implements Serializable, IJson {
     }
 
     @Nullable
-    public String getLogFormat() {
-        return this.logFormat;
-    }
- 
-    @Nullable
     public String getRegexPattern() {
         if (this.fileNamePattern == null)
             return null;
         return Utilities.wildcardToRegex(this.fileNamePattern);
+    }
+    
+    public String getTags(){
+	return this.tags;
     }
 
     public IFileReference createFileReference(String pathname) {
@@ -128,12 +125,6 @@ public class FileSetDescription implements Serializable, IJson {
                 case "hillviewlog":
                     loader = new HillviewLogs.LogFileLoader(this.pathname);
                     break;
-                case "genericlog":
-                    String format = FileSetDescription.this.getLogFormat();
-                    assert format != null;
-                    GenericLogs genLog = new GenericLogs(format);
-                    loader = genLog.getFileLoader(this.pathname);
-                    break;
                 default:
                     throw new RuntimeException(
                             "Unexpected file kind " + FileSetDescription.this.fileKind);
@@ -149,3 +140,5 @@ public class FileSetDescription implements Serializable, IJson {
         }
     }
 }
+
+    
