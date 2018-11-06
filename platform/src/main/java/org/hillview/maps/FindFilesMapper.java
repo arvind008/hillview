@@ -34,10 +34,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.regex.Pattern;
 
 /**
- * Scans a folder and finds files matching a pattern.
- * Creates a list of file loaders that can be invoked to load the actual file data as tables.
+ * Scans a folder and finds files matching a pattern. Creates a list of file
+ * loaders that can be invoked to load the actual file data as tables.
  */
 public class FindFilesMapper implements IMap<Empty, List<IFileReference>> {
     private final FileSetDescription description;
@@ -47,53 +48,72 @@ public class FindFilesMapper implements IMap<Empty, List<IFileReference>> {
     }
 
     /**
-     * Returns a list of IFileReference objects, one for each of the files
-     * that match the specification.
-     * @param empty: unused.
+     * Returns a list of IFileReference objects, one for each of the files that
+     * match the specification.
+     * 
+     * @param empty:
+     *            unused.
      */
     @Override
     public List<IFileReference> apply(Empty empty) {
-        Path dir = Paths.get(this.description.folder);
+        String folders = this.description.folder;
+        // Paths for multiple directories
+        Path dirPath;
+        String dirs[];
+
+        dirs = folders.split(",");
+        // paths = new Path[dirs.length];
+
         @Nullable
         String filenameRegex = this.description.getRegexPattern();
-        HillviewLogger.instance.info("Find files", "folder: {0}, absfolder: {1}, regex: {2}",
-                this.description.folder, dir.toAbsolutePath().toString(),
-                filenameRegex);
 
-        Stream<Path> files;
+        HillviewLogger.instance.info("Find files", "folder: {0}, absfolder: {1}, regex: {2}", folders, filenameRegex);
+
+        Stream<Path> files = null;
+        Stream<Path> result = null;
         try {
-            if(Files.exists(dir))
-                files = Files.walk(dir, 1, FileVisitOption.FOLLOW_LINKS);
-            else
+            for (int i = 0; i < dirs.length; i++) {
+                dirPath = Paths.get(dirs[i]);
+                if (Files.exists(dirPath)) {
+                    files = Files.walk(dirPath, 1, FileVisitOption.FOLLOW_LINKS);
+                    files = files.filter(f -> {
+                        if (f == null)
+                            return false;
+                        if (filenameRegex == null)
+                            return true;
+                        Path path = f.getFileName();
+                        if (path == null)
+                            return false;
+                        return Pattern.matches(filenameRegex, path.toString());
+                    });
+                    if (result == null)
+                        result = files;
+                    else
+                        result = Stream.concat(result, files);
+                }
+
+            }
+            if (result == null) {
                 return Collections.emptyList();
+            }
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        files = files.filter(f -> {
-            if (f == null)
-                return false;
-            if (filenameRegex == null)
-                return true;
-            Path path = f.getFileName();
-            if (path == null)
-                return false;
-            return path.toString().matches(filenameRegex);
-        });
-        Stream<String> fileNames = files.map(Path::toString).sorted();
+
+        Stream<String> fileNames = result.map(Path::toString).sorted();
         if (this.description.repeat > 1)
-            fileNames = fileNames.flatMap(
-                    n -> Collections.nCopies(this.description.repeat, n).stream());
+            fileNames = fileNames.flatMap(n -> Collections.nCopies(this.description.repeat, n).stream());
         /*
-        // Sometimes useful for testing.
-        if (this.description.maxCount > 0)
-            fileNames = fileNames.limit(this.maxCount);
-        */
+         * // Sometimes useful for testing. if (this.description.maxCount > 0) fileNames
+         * = fileNames.limit(this.maxCount);
+         */
         List<String> list = fileNames.collect(Collectors.toList());
         String allNames = String.join(",", list);
         HillviewLogger.instance.info("Files found", "{0}: {1}", list.size(), allNames);
-        List<IFileReference> result = new ArrayList<IFileReference>();
-        for (String n: list)
-            result.add(this.description.createFileReference(n));
-        return result;
+        List<IFileReference> finalResult = new ArrayList<IFileReference>();
+        for (String n : list)
+            finalResult.add(this.description.createFileReference(n));
+        return finalResult;
     }
 }
+
